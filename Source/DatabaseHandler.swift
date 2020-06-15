@@ -54,7 +54,7 @@ public class DatabaseHandler{
                 onDatabaseUpdate()
                 create(sql: "INSERT OR IGNORE INTO db_version(id) VALUES (\(version))")
                 print(">>>SQLite The version has been updated to version \(version)")
-            }else if version<lastversion{
+            }else {
                 print(">>>SQLite Important warning! the version you try to access is no longer available. Current version is \(lastversion)")
             }
         }else{
