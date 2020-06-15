@@ -9,7 +9,7 @@
 import Foundation
 
 
-class ResultSet{
+public class ResultSet{
     
     private var data:[[String]]
     private var pointer = -1;
@@ -18,7 +18,7 @@ class ResultSet{
         self.data = data
     }
     
-    func next() -> Bool {
+    public func next() -> Bool {
         pointer += 1
         if pointer >= data.count{
             return false
@@ -27,14 +27,14 @@ class ResultSet{
         }
     }
     
-    func getStringAt(column:Int) -> String {
+    public func getStringAt(column:Int) -> String {
         return data[pointer][column]
     }
     
-    func getIntAt(column:Int) -> Int {
+    public func getIntAt(column:Int) -> Int {
         let value = Int(data[pointer][column])
         guard let integer = value else{
-            print("Is not a number")
+            print("Value to cast is not a number! returning -1")
             return -1
         }
         return integer

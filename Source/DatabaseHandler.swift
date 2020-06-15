@@ -10,50 +10,44 @@ import Foundation
 import SQLite3
 
 
-class DatabaseHandler{
+public class DatabaseHandler{
     
-    static let instance = DatabaseHandler()
+    public static var instance : DatabaseHandler? = nil
+    private var dbname:String?
+    private var version:Int?
+    
+    
+    
+    public static func getInstance() -> DatabaseHandler{
+        if(instance == nil){
+            instance = DatabaseHandler();
+        }
+        return instance!;
+    }
+    
+    public func selectDatabase(dbname:String, version:Int){
+        self.dbname = dbname;
+        self.version = version;
+    }
     
     private init(){}
     
     //Globales del objeto
     
-    func initialize(){
-        let fileURL = try! FileManager
-        .default
-        .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create:true)
-            .appendingPathComponent(DBConstants.DB_NAME)
-        var db: OpaquePointer?
-        if sqlite3_open(fileURL.path, &db) == SQLITE_OK {
-            verifyDBVersion(version:DBConstants.VERSION)
-        } else {
-            print("Unable to open database.")
-        }
-        sqlite3_close(db)
+    public func initialize(){
+        verifyDBVersion()
     }
     
-    private func openDatabase() -> OpaquePointer?{
-        let fileURL = try! FileManager
-        .default
-        .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create:true)
-            .appendingPathComponent(DBConstants.DB_NAME)
-        
-        var db: OpaquePointer?
-        if sqlite3_open(fileURL.path, &db) == SQLITE_OK {
-            return db
-        } else {
-            print("Unable to open database.")
-            return nil
+    private func verifyDBVersion(){
+        guard let version = self.version else {
+            print("Version is undefined")
+            return
         }
-    }
-    
-    private func verifyDBVersion(version:Int){
         create(sql: "CREATE TABLE IF NOT EXISTS db_version(id INTEGER PRIMARY KEY)")
         let cursor = query(sql: "SELECT * FROM db_version WHERE id = (SELECT MAX(id) FROM db_version)")
         guard let results = cursor else {return}
         if results.next(){
             let lastversion = results.getIntAt(column: 0)
-            
             if version == lastversion {
                 print(">>>SQLite You have opened successfully the database at version \(version)")
             }else if version>lastversion{
@@ -63,9 +57,8 @@ class DatabaseHandler{
             }else if version<lastversion{
                 print(">>>SQLite Important warning! the version you try to access is no longer available. Current version is \(lastversion)")
             }
-            
         }else{
-            create(sql: "INSERT OR IGNORE INTO db_version(id) VALUES (\(version))")
+            internalExecute(sql: "INSERT OR IGNORE INTO db_version(id) VALUES (\(version))")
         }
     }
     
@@ -86,8 +79,35 @@ class DatabaseHandler{
         
     }
     
-    func create(sql:String){
-        let db = openDatabase()
+    private func openDatabase() -> OpaquePointer?{
+        guard let dbname = self.dbname else {
+            print("dbname is undefined")
+            return nil
+        }
+        let fileURL = try! FileManager
+        .default
+        .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create:true)
+            .appendingPathComponent(dbname)
+        
+        var db: OpaquePointer?
+        if sqlite3_open(fileURL.path, &db) == SQLITE_OK {
+            return db
+        } else {
+            print("Unable to open database.")
+            return nil
+        }
+    }
+    
+    
+    
+    
+    
+    public func create(sql:String){
+        guard let db = openDatabase() else{
+            print("SQLite error: can't open connection with SQLite")
+            return
+        }
+        
         var sqlStatement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &sqlStatement, nil) == SQLITE_OK {
           if sqlite3_step(sqlStatement) == SQLITE_DONE {}
@@ -102,8 +122,30 @@ class DatabaseHandler{
         sqlite3_close(db)
     }
     
-    func execute(sql:String){
-        let db = openDatabase()
+    private func internalExecute(sql:String){
+        guard let db = openDatabase() else{
+            print("SQLite error: can't open connection with SQLite")
+            return
+        }
+        var sqlStatement: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, -1, &sqlStatement, nil) == SQLITE_OK {
+          if sqlite3_step(sqlStatement) == SQLITE_DONE {}
+          else {
+            print(">>>SQLite error at execute SQL: \(sql) >>> \(String(cString: sqlite3_errmsg(db)))")
+          }
+          sqlite3_finalize(sqlStatement)
+        } else {
+          let errorMessage = String(cString: sqlite3_errmsg(db))
+          print(">>>SQLite error: \(sql) >>> \(errorMessage)")
+        }
+        sqlite3_close(db)
+    }
+    
+    public func execute(sql:String){
+        guard let db = openDatabase() else{
+            print("SQLite error: can't open connection with SQLite")
+            return
+        }
         var sqlStatement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &sqlStatement, nil) == SQLITE_OK {
           if sqlite3_step(sqlStatement) == SQLITE_DONE {
@@ -119,8 +161,11 @@ class DatabaseHandler{
         sqlite3_close(db)
     }
     
-    func query(sql:String) -> ResultSet?{
-        let db = openDatabase()
+    public func query(sql:String) -> ResultSet?{
+        guard let db = openDatabase() else{
+            print("SQLite error: can't open connection with SQLite")
+            return ResultSet(data: [[String]]())
+        }
         var cursor:ResultSet? = nil
         var queryStatement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &queryStatement, nil) == SQLITE_OK {
