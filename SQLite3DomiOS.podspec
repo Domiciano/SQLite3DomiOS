@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'SQLite3DomiOS'
-  s.version          = '1.0.0'
+  s.version          = '1.0.1'
   s.summary          = 'Use your local data base (SQLite) with easy access'
 
 # This description is used to generate tags and improve search results.
