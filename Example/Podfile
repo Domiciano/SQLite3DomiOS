@@ -1,0 +1,11 @@
+use_frameworks!
+
+target 'SQLite3DomiOS_Example' do
+  pod 'SQLite3DomiOS', :path => '../'
+
+  target 'SQLite3DomiOS_Tests' do
+    inherit! :search_paths
+
+    
+  end
+end
